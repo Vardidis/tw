@@ -1,0 +1,19 @@
+{
+  "name": "tribal-wars-attack-detector",
+  "version": "1.1.0",
+  "description": "Tribal Wars Attack Unit Detector - Detect attacking units based on arrival time",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 3000",
+    "preview": "python -m http.server 8080"
+  },
+  "keywords": [
+    "tribal-wars",
+    "gaming",
+    "userscript",
+    "tampermonkey"
+  ],
+  "author": "You",
+  "license": "MIT"
+}
+
