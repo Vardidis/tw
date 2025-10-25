@@ -17,12 +17,28 @@
     // ==================== CONFIGURATION ====================
     
     const CONFIG = {
-        version: '2.0',
+        version: '2.1',
         worldSpeed: parseFloat(localStorage.getItem('TW_worldSpeed')) || 1.0,
         unitSpeed: parseFloat(localStorage.getItem('TW_unitSpeed')) || 1.0,
         updateInterval: 2000,
-        maxAttacks: 100
+        maxAttacks: 100,
+        debug: false
     };
+    
+    // Script info (όπως στο Incomings Overview)
+    const scriptInfo = {
+        name: 'Attack Tracker',
+        version: CONFIG.version,
+        author: 'AI Assistant',
+        prefix: 'attackTracker'
+    };
+    
+    // Debug logging (όπως στο Incomings Overview)
+    function debugLog(message, data = null) {
+        if (CONFIG.debug) {
+            console.log(`[${scriptInfo.name}] ${message}`, data);
+        }
+    }
     
     // Ταχύτητες μονάδων (βάση)
     const UNIT_SPEEDS = {
@@ -152,14 +168,15 @@
                 right: 20px;
                 width: 420px;
                 max-height: 75vh;
-                background: linear-gradient(135deg, rgba(20, 20, 20, 0.98) 0%, rgba(40, 40, 60, 0.98) 100%);
-                border: 2px solid #8d5524;
-                border-radius: 8px;
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+                background: linear-gradient(135deg, rgba(15, 15, 15, 0.95) 0%, rgba(25, 25, 35, 0.95) 100%);
+                border: 1px solid #444;
+                border-radius: 6px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
                 z-index: 10000;
-                font-family: Verdana, Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 display: flex;
                 flex-direction: column;
+                backdrop-filter: blur(10px);
             }
             
             #attackTrackerPanel.minimized {
@@ -167,17 +184,17 @@
             }
             
             .tracker-header {
-                background: linear-gradient(to bottom, #8d5524 0%, #6d3d14 100%);
-                padding: 10px 12px;
-                border-bottom: 1px solid #5d2d04;
+                background: linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%);
+                padding: 12px 16px;
+                border-bottom: 1px solid #333;
                 border-radius: 6px 6px 0 0;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 cursor: move;
                 color: #fff;
-                font-weight: bold;
-                font-size: 13px;
+                font-weight: 600;
+                font-size: 14px;
             }
             
             .tracker-title {
@@ -246,18 +263,19 @@
             }
             
             .attack-card {
-                background: rgba(30, 30, 30, 0.9);
-                border: 1px solid #8d5524;
-                border-radius: 5px;
-                padding: 10px;
+                background: rgba(25, 25, 25, 0.8);
+                border: 1px solid #333;
+                border-radius: 4px;
+                padding: 12px;
                 margin-bottom: 8px;
-                transition: all 0.2s;
+                transition: all 0.3s ease;
             }
             
             .attack-card:hover {
-                background: rgba(40, 40, 40, 0.9);
-                border-color: #ad7534;
-                transform: translateX(-2px);
+                background: rgba(35, 35, 35, 0.9);
+                border-color: #555;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             }
             
             .attack-card.past {
@@ -384,17 +402,19 @@
         // Styles
         $('head').append(styles);
         
-        // Panel HTML
+        // Panel HTML (όπως στο Incomings Overview)
         const panelHTML = `
             <div id="attackTrackerPanel">
                 <div class="tracker-header">
                     <div class="tracker-title">
-                        🎯 Attack Tracker <span style="font-size: 10px; color: #ccc;">(${tracker.attacks.length})</span>
+                        <span style="color: #4CAF50;">⚔️</span> Attack Tracker 
+                        <span style="font-size: 11px; color: #888; margin-left: 8px;">v${CONFIG.version}</span>
+                        <span style="font-size: 10px; color: #ccc; margin-left: 8px;">(${tracker.attacks.length})</span>
                     </div>
                     <div class="tracker-controls">
-                        <button class="tracker-btn" id="trackerMinimize">−</button>
-                        <button class="tracker-btn" id="trackerClear">🗑</button>
-                        <button class="tracker-btn" id="trackerClose">✕</button>
+                        <button class="tracker-btn" id="trackerMinimize" title="Minimize">−</button>
+                        <button class="tracker-btn" id="trackerClear" title="Clear All">🗑</button>
+                        <button class="tracker-btn" id="trackerClose" title="Close">✕</button>
                     </div>
                 </div>
                 <div class="tracker-config">
@@ -407,8 +427,10 @@
                         <input type="number" id="unitSpeedInput" value="${CONFIG.unitSpeed}" step="0.1" min="0.1" max="10">
                     </div>
                 </div>
-                <div class="tracker-content" id="trackerContent"></div>
-                <div class="tracker-stats" id="trackerStats">Φόρτωση...</div>
+                <div class="tracker-content" id="trackerContent">
+                    <div class="no-attacks">Loading attacks...</div>
+                </div>
+                <div class="tracker-stats" id="trackerStats">Initializing...</div>
             </div>
         `;
         
@@ -534,67 +556,136 @@
     // ==================== ATTACK DETECTION ====================
     
     function detectAttacks() {
-        // Εύρεση εισερχόμενων επιθέσεων σε διάφορες σελίδες
-        const selectors = [
-            'tr.command-row',           // Overview με επιθέσεις
-            'tr[id^="attack_"]',        // Attack rows
-            'tr.quickedit-row',         // Quick edit rows
-            'tr[data-command-type="attack"]', // Attack command rows
-            '.quickedit-label',         // Quick edit labels
-            '.quickedit-content'        // Quick edit content
-        ];
+        // Εύρεση του incomings_table (όπως στο Incomings Overview script)
+        const $incomingsTable = $('#incomings_table');
+        
+        if ($incomingsTable.length === 0) {
+            console.log('📋 Incomings table not found - not on attacks page');
+            return;
+        }
+        
+        const $rows = $incomingsTable.find('tbody tr');
+        console.log(`📊 Found ${$rows.length} incoming attacks`);
+        
+        if ($rows.length === 0) {
+            console.log('📋 No incoming attacks found');
+            return;
+        }
         
         let foundAttacks = false;
         
-        selectors.forEach(selector => {
-            $(selector).each(function() {
-                try {
-                    const $row = $(this).closest('tr');
-                    const $timer = $row.find('span[id^="timer"], .timer, span.countdown');
-                    
-                    if ($timer.length === 0) return;
-                    
-                    const timeText = $timer.text().trim();
-                    if (!timeText || timeText === '00:00:00') return;
-                    
-                    const arrivalMinutes = parseTimeToMinutes(timeText);
-                    if (arrivalMinutes <= 0) return;
-                    
-                    const attackId = $row.attr('id') || `attack_${Date.now()}_${Math.random()}`;
-                    if (tracker.trackedIds.has(attackId)) return;
-                    
-                    const $coords = $row.find('a[href*="info_village"]');
-                    const $player = $row.find('a[href*="info_player"]');
-                    
-                    const attackData = {
-                        id: attackId,
-                        detectedAt: Date.now(),
-                        initialDuration: arrivalMinutes,
-                        arrivalTime: Date.now() + (arrivalMinutes * 60 * 1000),
-                        playerName: $player.length ? $player.first().text().trim() : 'Άγνωστος',
-                        sourceCoords: $coords.length > 0 ? $coords.eq(0).text().trim() : '???',
-                        targetCoords: $coords.length > 1 ? $coords.eq(1).text().trim() : '???',
-                        possibleUnits: getPossibleUnits(arrivalMinutes),
-                        worldSpeed: CONFIG.worldSpeed,
-                        unitSpeed: CONFIG.unitSpeed,
-                        status: 'active'
-                    };
-                    
-                    if (tracker.addAttack(attackData)) {
-                        console.log('🎯 Νέα επίθεση:', attackData);
-                        foundAttacks = true;
-                        updatePanel();
-                        UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}!`, 2000, 'success');
-                    }
-                } catch (error) {
-                    console.error('Error detecting attack:', error);
+        $rows.each(function(index) {
+            try {
+                const $row = $(this);
+                const $cells = $row.find('td');
+                
+                if ($cells.length < 8) {
+                    console.log(`⚠️ Row ${index} has insufficient cells (${$cells.length})`);
+                    return;
                 }
-            });
+                
+                // Extract data from table cells (όπως στο Incomings Overview)
+                const targetVillage = $cells.eq(2).text().trim();        // 3rd td - village being attacked
+                const sourceVillage = $cells.eq(3).text().trim();       // 4th td - attacker's village
+                const attackerName = $cells.eq(4).text().trim();        // 5th td - attacker username
+                const distanceText = $cells.eq(5).text().trim();        // 6th td - distance in fields
+                const arrivalTimeText = $cells.eq(6).text().trim();     // 7th td - arrival time
+                const countdownText = $cells.eq(7).text().trim();       // 8th td - countdown timer
+                
+                console.log(`🔍 Processing attack ${index + 1}:`, {
+                    targetVillage,
+                    sourceVillage,
+                    attackerName,
+                    distanceText,
+                    arrivalTimeText,
+                    countdownText
+                });
+                
+                // Parse distance
+                const distance = parseInt(distanceText.replace(/[^\d]/g, '')) || 0;
+                if (distance <= 0) {
+                    console.log(`⚠️ Invalid distance for attack ${index + 1}: ${distanceText}`);
+                    return;
+                }
+                
+                // Parse countdown time
+                const arrivalMinutes = parseTimeToMinutes(countdownText);
+                if (arrivalMinutes <= 0) {
+                    console.log(`⚠️ Invalid countdown for attack ${index + 1}: ${countdownText}`);
+                    return;
+                }
+                
+                // Calculate possible units based on distance and time
+                const possibleUnits = getPossibleUnitsFromDistance(arrivalMinutes, distance);
+                
+                // Create unique attack ID
+                const attackId = `attack_${sourceVillage}_${targetVillage}_${Date.now()}_${index}`;
+                
+                if (tracker.trackedIds.has(attackId)) {
+                    console.log(`⏭️ Attack ${index + 1} already tracked`);
+                    return;
+                }
+                
+                const attackData = {
+                    id: attackId,
+                    detectedAt: Date.now(),
+                    initialDuration: arrivalMinutes,
+                    arrivalTime: Date.now() + (arrivalMinutes * 60 * 1000),
+                    playerName: attackerName || 'Άγνωστος',
+                    sourceCoords: sourceVillage,
+                    targetCoords: targetVillage,
+                    distance: distance,
+                    arrivalTimeText: arrivalTimeText,
+                    countdownText: countdownText,
+                    possibleUnits: possibleUnits,
+                    worldSpeed: CONFIG.worldSpeed,
+                    unitSpeed: CONFIG.unitSpeed,
+                    status: 'active'
+                };
+                
+                if (tracker.addAttack(attackData)) {
+                    console.log('🎯 Νέα επίθεση καταγράφηκε:', attackData);
+                    foundAttacks = true;
+                    updatePanel();
+                    UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}!`, 2000, 'success');
+                }
+                
+            } catch (error) {
+                console.error(`Error processing attack row ${index}:`, error);
+            }
         });
         
         if (foundAttacks) {
             console.log('✅ Attacks detected and added to tracker');
+        } else {
+            console.log('ℹ️ No new attacks to add');
         }
+    }
+    
+    // ==================== UNIT CALCULATION FROM DISTANCE ====================
+    
+    function getPossibleUnitsFromDistance(arrivalMinutes, distance) {
+        const possibleUnits = [];
+        
+        for (const [unitKey, baseSpeed] of Object.entries(UNIT_SPEEDS)) {
+            const adjustedSpeed = getAdjustedSpeed(baseSpeed);
+            const calculatedTime = distance * adjustedSpeed;
+            const difference = Math.abs(arrivalMinutes - calculatedTime);
+            
+            // Tolerance of 2 minutes for unit matching
+            if (difference <= 2) {
+                possibleUnits.push({
+                    unit: unitKey,
+                    distance: distance,
+                    calculatedTime: calculatedTime,
+                    difference: difference,
+                    isExact: difference < 0.5
+                });
+            }
+        }
+        
+        // Sort by accuracy (most exact first)
+        return possibleUnits.sort((a, b) => a.difference - b.difference);
     }
     
     // ==================== NAVIGATION & STATE ====================
@@ -630,7 +721,7 @@
         isListening = true;
         console.log('👂 Started listening for attacks...');
         
-        // Start auto-update
+        // Start auto-update (όπως στο Incomings Overview)
         updateInterval = setInterval(() => {
             detectAttacks();
             updatePanel();
@@ -638,6 +729,38 @@
         
         // Initial detection
         setTimeout(detectAttacks, 1000);
+        
+        // Add DOM mutation observer (όπως στο Incomings Overview)
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        // Check if new attacks were added to the table
+                        const $newRows = $(mutation.addedNodes).filter('tr');
+                        if ($newRows.length > 0) {
+                            console.log('🔄 DOM mutation detected - checking for new attacks');
+                            setTimeout(detectAttacks, 500);
+                        }
+                    }
+                });
+            });
+            
+            // Observe the incomings table for changes
+            const $incomingsTable = $('#incomings_table');
+            if ($incomingsTable.length > 0) {
+                observer.observe($incomingsTable[0], {
+                    childList: true,
+                    subtree: true
+                });
+                console.log('👁️ DOM mutation observer started');
+            }
+        }
+        
+        // Add event listeners for table updates (όπως στο Incomings Overview)
+        $(document).on('DOMNodeInserted', '#incomings_table tbody', function() {
+            console.log('🔄 Table updated - checking for new attacks');
+            setTimeout(detectAttacks, 500);
+        });
         
         UI.SuccessMessage('Attack Tracker v' + CONFIG.version + ' activated! 🎯', 3000);
     }
