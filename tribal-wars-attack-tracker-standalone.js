@@ -535,67 +535,136 @@
     // ==================== ATTACK DETECTION ====================
     
     function detectAttacks() {
-        // Εύρεση εισερχόμενων επιθέσεων σε διάφορες σελίδες
-        const selectors = [
-            'tr.command-row',           // Overview με επιθέσεις
-            'tr[id^="attack_"]',        // Attack rows
-            'tr.quickedit-row',         // Quick edit rows
-            'tr[data-command-type="attack"]', // Attack command rows
-            '.quickedit-label',         // Quick edit labels
-            '.quickedit-content'        // Quick edit content
-        ];
+        // Εύρεση του incomings_table
+        const $incomingsTable = $('#incomings_table');
+        
+        if ($incomingsTable.length === 0) {
+            console.log('📋 Incomings table not found - not on attacks page');
+            return;
+        }
+        
+        const $rows = $incomingsTable.find('tbody tr');
+        console.log(`📊 Found ${$rows.length} incoming attacks`);
+        
+        if ($rows.length === 0) {
+            console.log('📋 No incoming attacks found');
+            return;
+        }
         
         let foundAttacks = false;
         
-        selectors.forEach(selector => {
-            $(selector).each(function() {
-                try {
-                    const $row = $(this).closest('tr');
-                    const $timer = $row.find('span[id^="timer"], .timer, span.countdown');
-                    
-                    if ($timer.length === 0) return;
-                    
-                    const timeText = $timer.text().trim();
-                    if (!timeText || timeText === '00:00:00') return;
-                    
-                    const arrivalMinutes = parseTimeToMinutes(timeText);
-                    if (arrivalMinutes <= 0) return;
-                    
-                    const attackId = $row.attr('id') || `attack_${Date.now()}_${Math.random()}`;
-                    if (tracker.trackedIds.has(attackId)) return;
-                    
-                    const $coords = $row.find('a[href*="info_village"]');
-                    const $player = $row.find('a[href*="info_player"]');
-                    
-                    const attackData = {
-                        id: attackId,
-                        detectedAt: Date.now(),
-                        initialDuration: arrivalMinutes,
-                        arrivalTime: Date.now() + (arrivalMinutes * 60 * 1000),
-                        playerName: $player.length ? $player.first().text().trim() : 'Άγνωστος',
-                        sourceCoords: $coords.length > 0 ? $coords.eq(0).text().trim() : '???',
-                        targetCoords: $coords.length > 1 ? $coords.eq(1).text().trim() : '???',
-                        possibleUnits: getPossibleUnits(arrivalMinutes),
-                        worldSpeed: CONFIG.worldSpeed,
-                        unitSpeed: CONFIG.unitSpeed,
-                        status: 'active'
-                    };
-                    
-                    if (tracker.addAttack(attackData)) {
-                        console.log('🎯 Νέα επίθεση:', attackData);
-                        foundAttacks = true;
-                        updatePanel();
-                        UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}!`, 2000, 'success');
-                    }
-                } catch (error) {
-                    console.error('Error detecting attack:', error);
+        $rows.each(function(index) {
+            try {
+                const $row = $(this);
+                const $cells = $row.find('td');
+                
+                if ($cells.length < 8) {
+                    console.log(`⚠️ Row ${index} has insufficient cells (${$cells.length})`);
+                    return;
                 }
-            });
+                
+                // Extract data from table cells
+                const targetVillage = $cells.eq(2).text().trim();        // 3rd td - village being attacked
+                const sourceVillage = $cells.eq(3).text().trim();       // 4th td - attacker's village
+                const attackerName = $cells.eq(4).text().trim();        // 5th td - attacker username
+                const distanceText = $cells.eq(5).text().trim();        // 6th td - distance in fields
+                const arrivalTimeText = $cells.eq(6).text().trim();     // 7th td - arrival time
+                const countdownText = $cells.eq(7).text().trim();       // 8th td - countdown timer
+                
+                console.log(`🔍 Processing attack ${index + 1}:`, {
+                    targetVillage,
+                    sourceVillage,
+                    attackerName,
+                    distanceText,
+                    arrivalTimeText,
+                    countdownText
+                });
+                
+                // Parse distance
+                const distance = parseInt(distanceText.replace(/[^\d]/g, '')) || 0;
+                if (distance <= 0) {
+                    console.log(`⚠️ Invalid distance for attack ${index + 1}: ${distanceText}`);
+                    return;
+                }
+                
+                // Parse countdown time
+                const arrivalMinutes = parseTimeToMinutes(countdownText);
+                if (arrivalMinutes <= 0) {
+                    console.log(`⚠️ Invalid countdown for attack ${index + 1}: ${countdownText}`);
+                    return;
+                }
+                
+                // Calculate possible units based on distance and time
+                const possibleUnits = getPossibleUnitsFromDistance(arrivalMinutes, distance);
+                
+                // Create unique attack ID
+                const attackId = `attack_${sourceVillage}_${targetVillage}_${Date.now()}_${index}`;
+                
+                if (tracker.trackedIds.has(attackId)) {
+                    console.log(`⏭️ Attack ${index + 1} already tracked`);
+                    return;
+                }
+                
+                const attackData = {
+                    id: attackId,
+                    detectedAt: Date.now(),
+                    initialDuration: arrivalMinutes,
+                    arrivalTime: Date.now() + (arrivalMinutes * 60 * 1000),
+                    playerName: attackerName || 'Άγνωστος',
+                    sourceCoords: sourceVillage,
+                    targetCoords: targetVillage,
+                    distance: distance,
+                    arrivalTimeText: arrivalTimeText,
+                    countdownText: countdownText,
+                    possibleUnits: possibleUnits,
+                    worldSpeed: CONFIG.worldSpeed,
+                    unitSpeed: CONFIG.unitSpeed,
+                    status: 'active'
+                };
+                
+                if (tracker.addAttack(attackData)) {
+                    console.log('🎯 Νέα επίθεση καταγράφηκε:', attackData);
+                    foundAttacks = true;
+                    updatePanel();
+                    UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}!`, 2000, 'success');
+                }
+                
+            } catch (error) {
+                console.error(`Error processing attack row ${index}:`, error);
+            }
         });
         
         if (foundAttacks) {
             console.log('✅ Attacks detected and added to tracker');
+        } else {
+            console.log('ℹ️ No new attacks to add');
         }
+    }
+    
+    // ==================== UNIT CALCULATION FROM DISTANCE ====================
+    
+    function getPossibleUnitsFromDistance(arrivalMinutes, distance) {
+        const possibleUnits = [];
+        
+        for (const [unitKey, baseSpeed] of Object.entries(UNIT_SPEEDS)) {
+            const adjustedSpeed = getAdjustedSpeed(baseSpeed);
+            const calculatedTime = distance * adjustedSpeed;
+            const difference = Math.abs(arrivalMinutes - calculatedTime);
+            
+            // Tolerance of 2 minutes for unit matching
+            if (difference <= 2) {
+                possibleUnits.push({
+                    unit: unitKey,
+                    distance: distance,
+                    calculatedTime: calculatedTime,
+                    difference: difference,
+                    isExact: difference < 0.5
+                });
+            }
+        }
+        
+        // Sort by accuracy (most exact first)
+        return possibleUnits.sort((a, b) => a.difference - b.difference);
     }
     
     // ==================== NAVIGATION & STATE ====================
@@ -658,12 +727,15 @@
     // Check if we're already on incomings page
     const currentUrl = window.location.href;
     const isOnIncomings = currentUrl.includes('mode=incomings') || currentUrl.includes('screen=overview_villages');
+    const hasIncomingsTable = $('#incomings_table').length > 0;
     
-    if (isOnIncomings) {
-        // Already on incomings - start listening immediately
+    if (isOnIncomings && hasIncomingsTable) {
+        // Already on incomings with table - start listening immediately
+        console.log('✅ On incomings page with table - starting immediately');
         startListening();
     } else {
-        // Not on incomings - show navigation option
+        // Not on incomings or no table - show navigation option
+        console.log('🧭 Not on incomings page - showing navigation options');
         UI.InfoMessage('Click "Go to Incomings" to navigate to attacks page, then click "Start Listening"', 5000);
         
         // Add navigation button to panel
