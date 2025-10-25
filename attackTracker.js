@@ -40,6 +40,63 @@
         }
     }
     
+    // ==================== TWSCRIPTS.DEV PATTERNS MAPPING ====================
+    
+    /*
+     * Based on Incomings Overview script patterns:
+     * https://twscripts.dev/scripts/incomingsOverview.js
+     * 
+     * Key patterns we're implementing:
+     * 1. twSDK structure for game data access
+     * 2. Script configuration with translations
+     * 3. DOM mutation observers for real-time updates
+     * 4. Helper functions for data processing
+     * 5. UI integration with Tribal Wars styling
+     * 6. Error handling and debug logging
+     * 7. Data persistence with localStorage
+     * 8. Unit speed calculations with world config
+     */
+    
+    // ==================== TWSDK INTEGRATION ====================
+    
+    // Initialize twSDK-like structure (based on Incomings Overview)
+    window.twSDK = window.twSDK || {
+        isDebug: CONFIG.debug,
+        isMobile: jQuery('#mobileHeader').length > 0,
+        delayBetweenRequests: 200,
+        
+        // Game data access
+        market: game_data.market,
+        units: game_data.units,
+        village: game_data.village,
+        buildings: game_data.village.buildings,
+        sitterId: game_data.player.sitter > 0 ? `&t=${game_data.player.id}` : '',
+        
+        // Regex patterns
+        coordsRegex: /\d{1,3}\|\d{1,3}/g,
+        dateTimeMatch: /(?:[A-Z][a-z]{2}\s+\d{1,2},\s*\d{0,4}\s+|today\s+at\s+|tomorrow\s+at\s+)\d{1,2}:\d{2}:\d{2}:?\.?\d{0,3}/,
+        
+        // API endpoints
+        worldInfoInterface: '/interface.php?func=get_config',
+        unitInfoInterface: '/interface.php?func=get_unit_info',
+        buildingInfoInterface: '/interface.php?func=get_building_info',
+        
+        // Helper functions (based on Incomings Overview)
+        getTimeFromString: function(timeString) {
+            const parts = timeString.trim().split(':').map(p => parseInt(p, 10));
+            if (parts.length === 3) {
+                return parts[0] * 60 + parts[1] + parts[2] / 60;
+            } else if (parts.length === 2) {
+                return parts[0] + parts[1] / 60;
+            }
+            return 0;
+        },
+        
+        getServerDateTimeObject: function() {
+            return new Date();
+        }
+    };
+    
     // Ταχύτητες μονάδων (βάση)
     const UNIT_SPEEDS = {
         'spear': 18, 'sword': 22, 'axe': 18, 'archer': 18,
@@ -536,6 +593,12 @@
         const primaryUnit = attack.possibleUnits[0];
         const distanceBadge = primaryUnit ? `<span class="distance-badge">~${primaryUnit.distance} πεδία</span>` : '';
         
+        // Show max countdown info
+        const maxCountdownInfo = attack.maxCountdown ? 
+            `<div style="font-size: 10px; color: #4CAF50; margin-top: 4px;">
+                📊 Max Countdown: ${formatTime(attack.maxCountdown)} | Current: ${formatTime(timeRemaining)}
+            </div>` : '';
+        
         return `
             <div class="attack-card ${isPast ? 'past' : ''}">
                 <div class="attack-header">
@@ -549,6 +612,7 @@
                 <div class="attack-units">
                     ${unitsHtml || '<span style="color: #888; font-size: 10px;">Καμία αντιστοιχία</span>'}
                 </div>
+                ${maxCountdownInfo}
             </div>
         `;
     }
@@ -608,28 +672,49 @@
                     return;
                 }
                 
-                // Parse countdown time
-                const arrivalMinutes = parseTimeToMinutes(countdownText);
+                // Parse countdown time using twSDK helper (like Incomings Overview)
+                const arrivalMinutes = twSDK.getTimeFromString(countdownText);
                 if (arrivalMinutes <= 0) {
                     console.log(`⚠️ Invalid countdown for attack ${index + 1}: ${countdownText}`);
+                    return;
+                }
+                
+                // Create unique attack ID based on source and target (like Incomings Overview)
+                const attackId = `attack_${sourceVillage}_${targetVillage}`;
+                
+                // Check if we already have this attack tracked
+                const existingAttack = tracker.attacks.find(a => a.id === attackId);
+                
+                if (existingAttack) {
+                    // Update existing attack with new countdown if it's higher (capture max countdown)
+                    const currentCountdown = twSDK.getTimeFromString(countdownText);
+                    const maxCountdown = Math.max(existingAttack.maxCountdown || 0, currentCountdown);
+                    
+                    if (currentCountdown > (existingAttack.maxCountdown || 0)) {
+                        console.log(`🔄 Updating attack ${index + 1} with new max countdown: ${maxCountdown} minutes`);
+                        existingAttack.maxCountdown = maxCountdown;
+                        existingAttack.currentCountdown = currentCountdown;
+                        existingAttack.countdownText = countdownText;
+                        existingAttack.lastUpdated = Date.now();
+                        
+                        // Recalculate units with max countdown (like Incomings Overview)
+                        existingAttack.possibleUnits = getPossibleUnitsFromDistance(maxCountdown, distance);
+                        
+                        tracker.saveAttacks();
+                        updatePanel();
+                    }
                     return;
                 }
                 
                 // Calculate possible units based on distance and time
                 const possibleUnits = getPossibleUnitsFromDistance(arrivalMinutes, distance);
                 
-                // Create unique attack ID
-                const attackId = `attack_${sourceVillage}_${targetVillage}_${Date.now()}_${index}`;
-                
-                if (tracker.trackedIds.has(attackId)) {
-                    console.log(`⏭️ Attack ${index + 1} already tracked`);
-                    return;
-                }
-                
                 const attackData = {
                     id: attackId,
                     detectedAt: Date.now(),
                     initialDuration: arrivalMinutes,
+                    maxCountdown: arrivalMinutes,  // Capture the maximum countdown value
+                    currentCountdown: arrivalMinutes,
                     arrivalTime: Date.now() + (arrivalMinutes * 60 * 1000),
                     playerName: attackerName || 'Άγνωστος',
                     sourceCoords: sourceVillage,
@@ -640,14 +725,15 @@
                     possibleUnits: possibleUnits,
                     worldSpeed: CONFIG.worldSpeed,
                     unitSpeed: CONFIG.unitSpeed,
-                    status: 'active'
+                    status: 'active',
+                    lastUpdated: Date.now()
                 };
                 
                 if (tracker.addAttack(attackData)) {
-                    console.log('🎯 Νέα επίθεση καταγράφηκε:', attackData);
+                    console.log('🎯 Νέα επίθεση καταγράφηκε με max countdown:', attackData.maxCountdown, 'minutes');
                     foundAttacks = true;
                     updatePanel();
-                    UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}!`, 2000, 'success');
+                    UI.InfoMessage(`Νέα επίθεση από ${attackData.playerName}! Max: ${attackData.maxCountdown}min`, 2000, 'success');
                 }
                 
             } catch (error) {
@@ -672,7 +758,7 @@
             const calculatedTime = distance * adjustedSpeed;
             const difference = Math.abs(arrivalMinutes - calculatedTime);
             
-            // Tolerance of 2 minutes for unit matching
+            // Tolerance of 2 minutes for unit matching (like Incomings Overview)
             if (difference <= 2) {
                 possibleUnits.push({
                     unit: unitKey,
@@ -687,6 +773,30 @@
         // Sort by accuracy (most exact first)
         return possibleUnits.sort((a, b) => a.difference - b.difference);
     }
+    
+    // ==================== WORLD CONFIGURATION ====================
+    
+    // Fetch world configuration (like Incomings Overview)
+    async function fetchWorldConfig() {
+        try {
+            const worldConfig = await twSDK.getWorldConfig();
+            return { worldConfig };
+        } catch (error) {
+            console.error(`[${scriptInfo.name}] Error fetching world config:`, error);
+            return null;
+        }
+    }
+    
+    // Get world configuration (like Incomings Overview)
+    twSDK.getWorldConfig = async function() {
+        try {
+            const response = await jQuery.get(twSDK.worldInfoInterface);
+            return response;
+        } catch (error) {
+            console.error(`[${scriptInfo.name}] Error getting world config:`, error);
+            return null;
+        }
+    };
     
     // ==================== NAVIGATION & STATE ====================
     
