@@ -268,9 +268,9 @@
         </div>
         
         <div class="warning">
-            <strong>⚠️ In-Game Script για Tribal Wars</strong>
-            Αυτό είναι ένα in-game script που τρέχει μέσα στο Tribal Wars με bookmarklet.<br>
-            Δεν χρειάζεται extensions - απλά ένα bookmark!
+            <strong>⚠️ Self-Contained Script για Tribal Wars</strong>
+            Αυτό είναι ένα standalone script που τρέχει μέσα στο Tribal Wars.<br>
+            Δεν χρειάζεται hosting, extensions ή bookmarks - απλά copy-paste!
         </div>
         
         <div class="features">
@@ -305,10 +305,11 @@
             <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <h3>Copy το Script URL</h3>
-                    <p>Αυτό είναι το link του script. Copy το παρακάτω κώδικα:</p>
-                    <div class="code-box" style="user-select: all;">
-javascript:$.getScript('<span id="ingame-url" style="color: #22c55e;">Loading...</span>');
+                    <h3>Copy το Script Code</h3>
+                    <p>Αυτό είναι το standalone script. Copy όλον τον κώδικα:</p>
+                    <div class="code-box" style="max-height: 200px; overflow-y: auto; font-size: 10px;">
+                        <a href="tribal-wars-attack-tracker-standalone.js" download style="color: #22c55e; font-weight: bold;">📥 Download Full Script</a><br><br>
+                        <span style="color: #888;">(Το script είναι ~700 γραμμές - καλύτερα download το αρχείο)</span>
                     </div>
                 </div>
             </div>
@@ -316,30 +317,25 @@ javascript:$.getScript('<span id="ingame-url" style="color: #22c55e;">Loading...
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h3>Δημιούργησε Bookmark</h3>
-                    <p>Δημιούργησε νέο bookmark στον browser σου:</p>
+                    <h3>Άνοιξε το Tribal Wars Script Feature</h3>
+                    <p>Στο Tribal Wars:</p>
                     <div class="code-box">
-                        <strong>Name:</strong> Attack Tracker<br>
-                        <strong>URL:</strong> Paste το παραπάνω code
+                        1. Πήγαινε στο <strong>Settings</strong> (⚙️)<br>
+                        2. Βρες το <strong>"Script"</strong> section<br>
+                        3. Κάνε κλικ <strong>"Add Script"</strong> ή <strong>"New Script"</strong>
                     </div>
-                    <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
-                        Tip: Μπορείς να το βάλεις στη bookmarks toolbar για εύκολη πρόσβαση!
-                    </p>
                 </div>
             </div>
             
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <h3>Χρήση στο Tribal Wars</h3>
-                    <p>Όταν παίζεις Tribal Wars:</p>
+                    <h3>Paste το Script</h3>
+                    <p>Στο script editor:</p>
                     <div class="code-box">
-                        1. Πήγαινε στις εισερχόμενες επιθέσεις<br>
-                        2. Κάνε κλικ στο bookmark "Attack Tracker"<br>
-                        3. Το panel εμφανίζεται δεξιά! 🎯<br><br>
-                        ✅ Αυτόματη καταγραφή επιθέσεων<br>
-                        ✅ Live countdown για κάθε επίθεση<br>
-                        ✅ Unit detection με world speed
+                        1. <strong>Name:</strong> Attack Tracker<br>
+                        2. <strong>Code:</strong> Paste όλον τον κώδικα<br>
+                        3. Κάνε κλικ <strong>"Save"</strong> ή <strong>"Activate"</strong>
                     </div>
                 </div>
             </div>
@@ -347,11 +343,28 @@ javascript:$.getScript('<span id="ingame-url" style="color: #22c55e;">Loading...
             <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
+                    <h3>Χρήση στο Παιχνίδι</h3>
+                    <p>Όταν παίζεις Tribal Wars:</p>
+                    <div class="code-box">
+                        1. Πήγαινε στις εισερχόμενες επιθέσεις<br>
+                        2. Το script τρέχει αυτόματα! 🎯<br><br>
+                        ✅ Αυτόματη καταγραφή επιθέσεων<br>
+                        ✅ Live countdown για κάθε επίθεση<br>
+                        ✅ Unit detection με world speed<br>
+                        ✅ Floating panel με όλες τις επιθέσεις
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
                     <h3>Ρύθμιση World Speed</h3>
-                    <p>Πρώτη φορά που τρέχεις το script, ρύθμισε τα settings του κόσμου σου:</p>
+                    <p>Πρώτη φορά που τρέχει το script, ρύθμισε τα settings:</p>
                     <div class="code-box">
                         <strong>World Speed:</strong> Βρες στο Settings του game (π.χ. 1.0, 2.0, κλπ.)<br>
-                        <strong>Unit Speed:</strong> Συνήθως 1.0 (εκτός αν ο κόσμος έχει special settings)
+                        <strong>Unit Speed:</strong> Συνήθως 1.0 (εκτός αν ο κόσμος έχει special settings)<br><br>
+                        <em>Το panel θα εμφανιστεί δεξιά με τα configuration fields</em>
                     </div>
                 </div>
             </div>
@@ -366,9 +379,8 @@ javascript:$.getScript('<span id="ingame-url" style="color: #22c55e;">Loading...
     </div>
     
     <script>
-        // Display current URL for easy copying
-        const baseUrl = window.location.origin;
-        document.getElementById('ingame-url').textContent = baseUrl + '/attackTracker.js';
+        // No external URLs needed - standalone script!
+        console.log('Standalone Attack Tracker - No external dependencies!');
     </script>
 </body>
 </html>

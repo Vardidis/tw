@@ -1,8 +1,9 @@
 /**
  * Tribal Wars - Attack Tracker & Unit Detector
- * Self-contained in-game script για ανίχνευση και καταγραφή επιθέσεων
+ * Self-contained script για ανίχνευση και καταγραφή επιθέσεων
  * 
  * Χρήση: Copy-paste αυτόν τον κώδικα στο Tribal Wars Script feature
+ * Δεν χρειάζεται external hosting ή Tampermonkey!
  */
 
 (function() {
@@ -715,4 +716,3 @@
     });
     
 })();
-
