@@ -614,6 +614,10 @@
         const incomingUrl = `/game.php?village=${villageId}&screen=overview_villages&mode=incomings&type=unignored&subtype=all`;
         
         console.log('🧭 Navigating to incomings:', incomingUrl);
+        
+        // Store flag that we're navigating to incomings
+        localStorage.setItem('TW_navigatingToIncomings', 'true');
+        
         window.location.href = incomingUrl;
     }
     
@@ -657,51 +661,43 @@
     // Check if we're already on incomings page
     const currentUrl = window.location.href;
     const isOnIncomings = currentUrl.includes('mode=incomings') || currentUrl.includes('screen=overview_villages');
+    const hasIncomingsTable = $('#incomings_table').length > 0;
+    const wasNavigating = localStorage.getItem('TW_navigatingToIncomings') === 'true';
     
-    if (isOnIncomings) {
-        // Already on incomings - start listening immediately
+    if (isOnIncomings && hasIncomingsTable) {
+        // Already on incomings with table - start listening immediately
+        console.log('✅ On incomings page with table - starting immediately');
+        
+        // Clear navigation flag
+        localStorage.removeItem('TW_navigatingToIncomings');
+        
         startListening();
+    } else if (wasNavigating) {
+        // We just navigated here but table might not be loaded yet
+        console.log('⏳ Just navigated to incomings - waiting for table to load...');
+        UI.InfoMessage('Waiting for attacks table to load...', 2000);
+        
+        // Wait a bit for the table to load, then check again
+        setTimeout(() => {
+            const $table = $('#incomings_table');
+            if ($table.length > 0) {
+                console.log('✅ Table loaded - starting listening');
+                localStorage.removeItem('TW_navigatingToIncomings');
+                startListening();
+            } else {
+                console.log('⚠️ Table still not found - manual restart needed');
+                UI.ErrorMessage('Table not found. Please run the script again.', 3000);
+            }
+        }, 2000);
     } else {
-        // Not on incomings - show navigation option
-        UI.InfoMessage('Click "Go to Incomings" to navigate to attacks page, then click "Start Listening"', 5000);
+        // Not on incomings - auto-navigate immediately
+        console.log('🧭 Not on incomings page - auto-navigating...');
+        UI.InfoMessage('Auto-navigating to incomings page...', 2000);
         
-        // Add navigation button to panel
-        const navButton = `
-            <div style="padding: 10px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
-                <button id="navToIncomings" style="
-                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    margin-right: 10px;
-                ">🧭 Go to Incomings</button>
-                <button id="startListening" style="
-                    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                ">👂 Start Listening</button>
-            </div>
-        `;
-        
-        $('#attackTrackerPanel').append(navButton);
-        
-        // Event listeners for navigation buttons
-        $('#navToIncomings').click(function() {
+        // Auto-navigate after a short delay to show the message
+        setTimeout(() => {
             navigateToIncomings();
-        });
-        
-        $('#startListening').click(function() {
-            startListening();
-            $(this).text('👂 Listening...').prop('disabled', true);
-            $('#navToIncomings').hide();
-        });
+        }, 1000);
     }
     
     console.log('%c🎯 Attack Tracker Ready!', 'color: #22c55e; font-size: 16px; font-weight: bold;');
