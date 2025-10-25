@@ -308,8 +308,16 @@
                     <h3>Copy το Script URL</h3>
                     <p>Αυτό είναι το hosted script. Copy το παρακάτω κώδικα:</p>
                     <div class="code-box" style="user-select: all;">
-javascript:$.getScript('<span id="hosted-url" style="color: #22c55e;">Loading...</span>');
+javascript:var WORLD_SPEED=1.0;var UNIT_SPEED=1.0;var DEBUG=false;$.getScript('<span id="hosted-url" style="color: #22c55e;">Loading...</span>');
                     </div>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
+                        <strong>Parameters:</strong><br>
+                        • <code>WORLD_SPEED</code>: World speed (default: 1.0)<br>
+                        • <code>UNIT_SPEED</code>: Unit speed (default: 1.0)<br>
+                        • <code>DEBUG</code>: Debug mode (default: false)<br>
+                        • <code>UPDATE_INTERVAL</code>: Update interval in ms (default: 2000)<br>
+                        • <code>MAX_ATTACKS</code>: Max attacks to track (default: 100)
+                    </p>
                 </div>
             </div>
             

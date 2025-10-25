@@ -16,13 +16,20 @@
     
     // ==================== CONFIGURATION ====================
     
+    // User Input Parameters (like Incomings Overview)
+    if (typeof WORLD_SPEED !== 'undefined') var userWorldSpeed = WORLD_SPEED;
+    if (typeof UNIT_SPEED !== 'undefined') var userUnitSpeed = UNIT_SPEED;
+    if (typeof UPDATE_INTERVAL !== 'undefined') var userUpdateInterval = UPDATE_INTERVAL;
+    if (typeof MAX_ATTACKS !== 'undefined') var userMaxAttacks = MAX_ATTACKS;
+    if (typeof DEBUG !== 'undefined') var userDebug = DEBUG;
+    
     const CONFIG = {
         version: '2.1',
-        worldSpeed: parseFloat(localStorage.getItem('TW_worldSpeed')) || 1.0,
-        unitSpeed: parseFloat(localStorage.getItem('TW_unitSpeed')) || 1.0,
-        updateInterval: 2000,
-        maxAttacks: 100,
-        debug: false
+        worldSpeed: userWorldSpeed || parseFloat(localStorage.getItem('TW_worldSpeed')) || 1.0,
+        unitSpeed: userUnitSpeed || parseFloat(localStorage.getItem('TW_unitSpeed')) || 1.0,
+        updateInterval: userUpdateInterval || 2000,
+        maxAttacks: userMaxAttacks || 100,
+        debug: userDebug || false
     };
     
     // Script info (όπως στο Incomings Overview)
@@ -220,20 +227,19 @@
     const styles = `
         <style id="attack-tracker-styles">
             #attackTrackerPanel {
-                position: fixed;
-                top: 80px;
-                right: 20px;
-                width: 420px;
-                max-height: 75vh;
-                background: linear-gradient(135deg, rgba(15, 15, 15, 0.95) 0%, rgba(25, 25, 35, 0.95) 100%);
-                border: 1px solid #444;
-                border-radius: 6px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-                z-index: 10000;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                display: flex;
-                flex-direction: column;
-                backdrop-filter: blur(10px);
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 100%;
+                max-width: 400px;
+                background: rgba(0, 0, 0, 0.9);
+                border: 1px solid #8d5524;
+                border-radius: 4px;
+                z-index: 1000;
+                font-family: Verdana, Arial, sans-serif;
+                font-size: 12px;
+                color: #fff;
+                display: none;
             }
             
             #attackTrackerPanel.minimized {
@@ -241,17 +247,17 @@
             }
             
             .tracker-header {
-                background: linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%);
-                padding: 12px 16px;
-                border-bottom: 1px solid #333;
-                border-radius: 6px 6px 0 0;
+                background: linear-gradient(to bottom, #8d5524 0%, #6d3d14 100%);
+                padding: 8px 12px;
+                border-bottom: 1px solid #5d2d04;
+                border-radius: 4px 4px 0 0;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 cursor: move;
                 color: #fff;
-                font-weight: 600;
-                font-size: 14px;
+                font-weight: bold;
+                font-size: 12px;
             }
             
             .tracker-title {
@@ -320,19 +326,19 @@
             }
             
             .attack-card {
-                background: rgba(25, 25, 25, 0.8);
-                border: 1px solid #333;
-                border-radius: 4px;
-                padding: 12px;
-                margin-bottom: 8px;
-                transition: all 0.3s ease;
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid #8d5524;
+                border-radius: 3px;
+                padding: 8px;
+                margin-bottom: 6px;
+                transition: all 0.2s ease;
             }
             
             .attack-card:hover {
-                background: rgba(35, 35, 35, 0.9);
-                border-color: #555;
+                background: rgba(20, 20, 20, 0.9);
+                border-color: #ad7534;
                 transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
             }
             
             .attack-card.past {
@@ -374,25 +380,25 @@
             }
             
             .unit-icon {
-                width: 22px;
-                height: 22px;
+                width: 18px;
+                height: 18px;
                 background-size: contain;
                 background-repeat: no-repeat;
                 background-position: center;
-                border-radius: 3px;
+                border-radius: 2px;
                 transition: all 0.2s;
                 cursor: help;
             }
             
             .unit-icon.exact {
                 border: 2px solid #22c55e;
-                box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+                box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
                 animation: pulse-exact 2s infinite;
             }
             
             .unit-icon.possible {
                 border: 2px solid #ffc107;
-                box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
+                box-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
             }
             
             .unit-icon:hover {
@@ -405,34 +411,34 @@
             }
             
             .tracker-stats {
-                padding: 8px 10px;
-                background: rgba(0, 0, 0, 0.4);
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                font-size: 10px;
-                color: #aaa;
+                padding: 6px 8px;
+                background: rgba(0, 0, 0, 0.6);
+                border-top: 1px solid #8d5524;
+                font-size: 9px;
+                color: #ccc;
                 text-align: center;
             }
             
             .no-attacks {
                 text-align: center;
-                padding: 30px;
+                padding: 20px;
                 color: #888;
-                font-size: 12px;
+                font-size: 10px;
             }
             
             .distance-badge {
                 display: inline-block;
                 background: rgba(100, 181, 246, 0.3);
                 color: #64b5f6;
-                padding: 2px 5px;
-                border-radius: 3px;
-                font-size: 9px;
+                padding: 1px 3px;
+                border-radius: 2px;
+                font-size: 8px;
                 font-weight: bold;
-                margin-left: 5px;
+                margin-left: 3px;
             }
             
             .tracker-content::-webkit-scrollbar {
-                width: 8px;
+                width: 6px;
             }
             
             .tracker-content::-webkit-scrollbar-track {
@@ -441,7 +447,7 @@
             
             .tracker-content::-webkit-scrollbar-thumb {
                 background: #8d5524;
-                border-radius: 4px;
+                border-radius: 3px;
             }
             
             .tracker-content::-webkit-scrollbar-thumb:hover {
@@ -459,14 +465,14 @@
         // Styles
         $('head').append(styles);
         
-        // Panel HTML (όπως στο Incomings Overview)
+        // Panel HTML (embedded in game like twscripts.dev)
         const panelHTML = `
             <div id="attackTrackerPanel">
                 <div class="tracker-header">
                     <div class="tracker-title">
-                        <span style="color: #4CAF50;">⚔️</span> Attack Tracker 
-                        <span style="font-size: 11px; color: #888; margin-left: 8px;">v${CONFIG.version}</span>
-                        <span style="font-size: 10px; color: #ccc; margin-left: 8px;">(${tracker.attacks.length})</span>
+                        <span style="color: #8d5524;">⚔️</span> Attack Tracker 
+                        <span style="font-size: 10px; color: #888; margin-left: 8px;">v${CONFIG.version}</span>
+                        <span style="font-size: 9px; color: #ccc; margin-left: 8px;">(${tracker.attacks.length})</span>
                     </div>
                     <div class="tracker-controls">
                         <button class="tracker-btn" id="trackerMinimize" title="Minimize">−</button>
@@ -491,7 +497,13 @@
             </div>
         `;
         
-        $('body').append(panelHTML);
+        // Embed in game like twscripts.dev (not popup)
+        const $gameContent = $('#content, .content, #game_content').first();
+        if ($gameContent.length > 0) {
+            $gameContent.append(panelHTML);
+        } else {
+            $('body').append(panelHTML);
+        }
         
         // Make draggable
         makeDraggable();
@@ -935,6 +947,13 @@
     
     console.log('%c🎯 Attack Tracker Ready!', 'color: #22c55e; font-size: 16px; font-weight: bold;');
     console.log('Version:', CONFIG.version);
+    console.log('Configuration:', {
+        worldSpeed: CONFIG.worldSpeed,
+        unitSpeed: CONFIG.unitSpeed,
+        updateInterval: CONFIG.updateInterval,
+        maxAttacks: CONFIG.maxAttacks,
+        debug: CONFIG.debug
+    });
     console.log('Καταγεγραμμένες επιθέσεις:', tracker.attacks.length);
     console.log('On incomings page:', isOnIncomings);
     
